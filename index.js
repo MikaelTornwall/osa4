@@ -6,16 +6,32 @@ const cors = require('cors')
 const mongoose = require('mongoose')
 const Blog = require('./models/blog')
 const blogsRouter = require('./controllers/blogs')
+const config = require('./utils/config')
+
+mongoose
+.connect(config.url)
+.then(() => {
+  console.log('connected to database', config.url)
+})
+.catch(error => {
+  console.log(error)
+})
 
 app.use(cors())
 app.use(bodyParser.json())
 app.use('/api/blogs/', blogsRouter)
 
-const url = 'mongodb://blog_user:blog_user@ds127864.mlab.com:27864/blog_base'
+const server =  http.createServer(app)
 
-mongoose.connect(url)
-
-const PORT = 3003
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
+server.listen(config.port, () => {
+  console.log(`Server running on port ${config.port}`)
 })
+
+server.on('close', () => {
+  mongoose.connection.close()
+})
+
+module.exports = {
+  app,
+  server
+}
