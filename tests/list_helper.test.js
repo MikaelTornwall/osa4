@@ -1,6 +1,6 @@
 const listHelper = require('../utils/list_helper')
 
-describe('let\'s skip these', () => {
+describe.skip('let\'s skip these', () => {
 
 const listWithNoBlog = []
 

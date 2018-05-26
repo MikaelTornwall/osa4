@@ -1,18 +1,13 @@
 const blogsRouter = require('express').Router()
 const Blog = require('../models/blog')
-
-const formatBlog = (blog) => {
-  return {
-    title: blog.title,
-    author: blog.author,
-    url: blog.url,
-    likes: blog.likes === undefined ? 0 : blog.likes
-  }
-}
+const User = require('../models/user')
+const jwt = require('jsonwebtoken')
 
 blogsRouter.get('/', async (req, res) => {
-  const blogs = await Blog.find({})
-  res.json(blogs.map(formatBlog))
+  const blogs = await Blog
+  .find({})
+  .populate('user', { username: 1, name: 1 })
+  res.json(blogs.map(Blog.format))
 })
 
 blogsRouter.get('/:id', async (req, res) => {
@@ -20,7 +15,7 @@ blogsRouter.get('/:id', async (req, res) => {
     const blog  = await Blog.findById(req.params.id)
 
     if (blog) {
-      res.json(formatBlog(blog))
+      res.json(Blog.format(blog))
     } else {
       res.status(404).end()
     }
@@ -31,25 +26,86 @@ blogsRouter.get('/:id', async (req, res) => {
 })
 
 blogsRouter.post('/', async (req, res) => {
-try { const body = req.body
+  const body = req.body
+  console.log(req.body)
+  console.log(req.token)
+try {
+  // const token = getTokenFrom(req)
+  console.log('Tuleeko läpi?')
+  console.log(req.body)
+  console.log(req.token)
+  const decodedToken = jwt.verify(req.token, process.env.SECRET)
+
+  if (!req.token || !decodedToken.id) {
+    return res.status(401).json({ error: 'token missing or invalid' })
+  }
 
 if (body.title === undefined || body.url === undefined) {
   return res.status(400).json({ error: 'content missing' })
 }
 
+  const user = await User.findById(decodedToken.id)
+
     const blog = new Blog({
       title: body.title,
       author: body.author,
       url: body.url,
-      likes: body.likes === undefined ? 0 : body.likes
+      likes: body.likes === undefined ? 0 : body.likes,
+      user: user._id
     })
 
     const savedBlog = await blog.save()
-    res.json(formatBlog(savedBlog))
+
+    user.blogs = user.blogs.concat(savedBlog._id)
+    await user.save()
+
+    res.json(Blog.format(savedBlog))
+
 } catch (exception) {
+  if (exception.name === 'JsonWebTokenError') {
+    res.status(401).json({ error: exception.message })
+  } else {
     console.log(exception)
     res.status(500).json( {error: 'something went horribly wrong'} )
 }
+}
+})
+
+blogsRouter.put('/:id', async (req, res) => {
+  try {
+    const body = req.body
+
+    const blog = {
+      likes: body.likes
+    }
+
+    const updatedBlog = await Blog.findByIdAndUpdate(req.params.id, blog, { new: true })
+    res.json(Blog.format(updatedBlog))
+  } catch (exception) {
+    console.log(exception)
+    res.status(400).send({ error: 'malformatted id' })
+  }
+})
+
+blogsRouter.delete('/:id', async (req, res) => {
+  try {
+    const decodedToken = jwt.verify(req.token, process.env.SECRET)
+
+    if (!req.token || !decodedToken.id) {
+      return res.status(401).json({ error: 'token missing or invalid' })
+    }
+
+    await Blog.findByIdAndRemove(req.params.id)
+    res.status(204).end()
+
+  } catch (exception) {
+    if (exception.name === 'JsonWebTokenError') {
+      res.status(401).json({ error: exception.message })
+    } else {
+      console.log(exception)
+      res.status(500).json( {error: 'something went horribly wrong'} )
+  }
+  }
 })
 
 module.exports = blogsRouter
