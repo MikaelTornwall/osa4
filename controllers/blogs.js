@@ -25,18 +25,21 @@ blogsRouter.get('/:id', async (req, res) => {
   }
 })
 
+const getTokenFrom = (req) => {
+  const authorization = req.get('authorization')
+  if (authorization && authorization.toLowerCase().startsWith('bearer')) {
+    return authorization.substring(7)
+  }
+  return null
+}
+
 blogsRouter.post('/', async (req, res) => {
   const body = req.body
-  console.log(req.body)
-  console.log(req.token)
 try {
-  // const token = getTokenFrom(req)
-  console.log('Tuleeko läpi?')
-  console.log(req.body)
-  console.log(req.token)
-  const decodedToken = jwt.verify(req.token, process.env.SECRET)
+  const token = getTokenFrom(req)
+  const decodedToken = jwt.verify(token, process.env.SECRET)
 
-  if (!req.token || !decodedToken.id) {
+  if (!token || !decodedToken.id) {
     return res.status(401).json({ error: 'token missing or invalid' })
   }
 
@@ -59,7 +62,7 @@ if (body.title === undefined || body.url === undefined) {
     user.blogs = user.blogs.concat(savedBlog._id)
     await user.save()
 
-    res.json(Blog.format(savedBlog))
+    res.json(Blog.format(blog))
 
 } catch (exception) {
   if (exception.name === 'JsonWebTokenError') {
@@ -89,9 +92,9 @@ blogsRouter.put('/:id', async (req, res) => {
 
 blogsRouter.delete('/:id', async (req, res) => {
   try {
-    const decodedToken = jwt.verify(req.token, process.env.SECRET)
+    const decodedToken = jwt.verify(token, process.env.SECRET)
 
-    if (!req.token || !decodedToken.id) {
+    if (!token || !decodedToken.id) {
       return res.status(401).json({ error: 'token missing or invalid' })
     }
 
