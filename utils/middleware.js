@@ -1,8 +1,8 @@
-/* const tokenExtractor = (req, res, next) => {
+const tokenExtractor = (req, res, next) => {
   const authorization = req.get('authorization')
-  console.log(authorization)
   if (authorization && authorization.toLowerCase().startsWith('bearer')) {
-    return req.token = authorization.substring(7)
+    console.log("Tässä token:", authorization.substring(7))
+    req.token = authorization.substring(7)
   } else {
     null
   }
@@ -12,4 +12,3 @@
 module.exports = {
   tokenExtractor
 }
-*/

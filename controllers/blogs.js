@@ -25,27 +25,24 @@ blogsRouter.get('/:id', async (req, res) => {
   }
 })
 
-const getTokenFrom = (req) => {
-  const authorization = req.get('authorization')
-  if (authorization && authorization.toLowerCase().startsWith('bearer')) {
-    return authorization.substring(7)
-  }
-  return null
-}
 
 blogsRouter.post('/', async (req, res) => {
   const body = req.body
+  console.log(body.title, body.url)
+
 try {
-  const token = getTokenFrom(req)
+  console.log("This is req.body", req.body)
+  console.log("This is req.token:", req.token)
+  const token = req.token
   const decodedToken = jwt.verify(token, process.env.SECRET)
 
   if (!token || !decodedToken.id) {
     return res.status(401).json({ error: 'token missing or invalid' })
   }
 
-if (body.title === undefined || body.url === undefined) {
-  return res.status(400).json({ error: 'content missing' })
-}
+  if (body.title.length === 0 || body.url.length === 0) {
+    return res.status(400).json({ error: 'title or url missing' })
+  }
 
   const user = await User.findById(decodedToken.id)
 
@@ -92,14 +89,26 @@ blogsRouter.put('/:id', async (req, res) => {
 
 blogsRouter.delete('/:id', async (req, res) => {
   try {
+    const token = req.token
     const decodedToken = jwt.verify(token, process.env.SECRET)
 
     if (!token || !decodedToken.id) {
       return res.status(401).json({ error: 'token missing or invalid' })
     }
 
+    const blogToBeDeleted = await Blog.findById(req.params.id)
+    const userId = blogToBeDeleted.user === undefined ? undefined : blogToBeDeleted.user
+
+    console.log("User id: ", userId)
+    console.log("decodedToken.id: ", decodedToken.id)
+
+    if (userId === undefined || userId == decodedToken.id) {
+    console.log('Delete blog', decodedToken.id, req.body)
     await Blog.findByIdAndRemove(req.params.id)
     res.status(204).end()
+  } else {
+    return res.status(401).json({ error: 'Wrong user id' })
+  }
 
   } catch (exception) {
     if (exception.name === 'JsonWebTokenError') {
